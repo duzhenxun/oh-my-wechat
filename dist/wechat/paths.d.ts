@@ -5,7 +5,6 @@ export declare const OMW_HOME: string;
 export declare const ACCOUNT_PATH: string;
 export declare const CURSOR_PATH: string;
 export declare const CONTEXT_PATH: string;
-export declare const CLAIMS_DIR: string;
 export declare const BRIDGE_LOCK_PATH: string;
 export declare const CODEX_RUNTIME_DIR: string;
 export type CodexRuntimeEndpoint = {
@@ -27,6 +26,7 @@ export type BridgeLock = {
 export declare function ensureOmwHome(): void;
 export declare function readJson<T>(filePath: string): T | null;
 export declare function writeJson(filePath: string, value: unknown): void;
+export declare function cleanupLegacyClaimsDir(): boolean;
 export declare function codexRuntimePath(cwd: string): string;
 export declare function writeCodexRuntimeEndpoint(endpoint: CodexRuntimeEndpoint): void;
 export declare function readCodexRuntimeEndpoint(cwd: string): CodexRuntimeEndpoint | null;

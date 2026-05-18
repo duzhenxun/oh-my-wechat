@@ -12,8 +12,9 @@ const POLL_RETRY_MIN = 1_000;
 const POLL_RETRY_MAX = 30_000;
 const ANSI_RESET = "\x1b[0m";
 const ANSI_DIM = "\x1b[90m";
-const ANSI_CYAN = "\x1b[36m";
-const ANSI_GREEN = "\x1b[32m";
+const ANSI_MAGENTA = "\x1b[35m";
+const ANSI_YELLOW = "\x1b[33m";
+const ANSI_WHITE = "\x1b[97m";
 function localTimestamp(date = new Date()) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -23,19 +24,27 @@ function localTimestamp(date = new Date()) {
     const second = String(date.getSeconds()).padStart(2, "0");
     return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
-function colorizeLocalLine(text, kind) {
+function paint(text, color) {
     if (!process.stderr.isTTY || process.env.NO_COLOR) {
         return text;
     }
-    const color = kind === "user"
-        ? ANSI_CYAN
-        : kind === "agent"
-            ? ANSI_GREEN
-            : ANSI_DIM;
     return `${color}${text}${ANSI_RESET}`;
 }
+function formatLocalLine(line, kind, mode) {
+    const stamp = paint(`[${localTimestamp()}]`, ANSI_WHITE);
+    if (kind === "agent") {
+        const label = paint(`[${mode ?? "agent"}]`, ANSI_YELLOW);
+        const body = paint(line, ANSI_WHITE);
+        return `${stamp} ${label} ${body}`;
+    }
+    const label = paint("[oh-my-wechat]", ANSI_DIM);
+    const body = kind === "user"
+        ? paint(line, ANSI_MAGENTA)
+        : paint(line, ANSI_DIM);
+    return `${stamp} ${label} ${body}`;
+}
 function log(line, kind = "system") {
-    process.stderr.write(`${colorizeLocalLine(`[${localTimestamp()}] [oh-my-wechat] ${line}`, kind)}\n`);
+    process.stderr.write(`${formatLocalLine(line, kind)}\n`);
 }
 export function parseArgs(argv) {
     let mode = "codex";
@@ -241,11 +250,10 @@ export async function runBridge(options) {
             if (!normalized.trim()) {
                 return;
             }
-            const stamped = localTimestamp();
             const rendered = normalized
                 .trimEnd()
                 .split("\n")
-                .map((line) => colorizeLocalLine(`[${stamped}] [oh-my-wechat][${options.mode}] ${line}`, "agent"))
+                .map((line) => formatLocalLine(line, "agent", options.mode))
                 .join("\n");
             process.stderr.write(`${rendered}\n`);
         };

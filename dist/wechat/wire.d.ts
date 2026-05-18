@@ -23,6 +23,7 @@ export declare class WechatWire {
     private readonly workspaceCwd;
     private cursor;
     private contexts;
+    private readonly claims;
     constructor(log?: (line: string) => void, workspaceCwd?: string);
     account(): OmwAccount;
     statusText(): string;

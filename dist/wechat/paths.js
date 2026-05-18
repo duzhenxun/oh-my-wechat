@@ -13,9 +13,9 @@ export const OMW_HOME = process.env.OH_MY_WECHAT_HOME?.trim()
 export const ACCOUNT_PATH = path.join(OMW_HOME, "account.json");
 export const CURSOR_PATH = path.join(OMW_HOME, "sync-cursor.txt");
 export const CONTEXT_PATH = path.join(OMW_HOME, "reply-contexts.json");
-export const CLAIMS_DIR = path.join(OMW_HOME, "message-claims");
 export const BRIDGE_LOCK_PATH = path.join(OMW_HOME, "active-bridge-lock.json");
 export const CODEX_RUNTIME_DIR = path.join(OMW_HOME, "codex-runtime");
+const LEGACY_CLAIMS_DIR = path.join(OMW_HOME, "message-claims");
 export function ensureOmwHome() {
     fs.mkdirSync(OMW_HOME, { recursive: true });
 }
@@ -33,6 +33,18 @@ export function readJson(filePath) {
 export function writeJson(filePath, value) {
     ensureOmwHome();
     fs.writeFileSync(filePath, JSON.stringify(value, null, 2), "utf8");
+}
+export function cleanupLegacyClaimsDir() {
+    try {
+        if (!fs.existsSync(LEGACY_CLAIMS_DIR)) {
+            return false;
+        }
+        fs.rmSync(LEGACY_CLAIMS_DIR, { recursive: true, force: true });
+        return true;
+    }
+    catch {
+        return false;
+    }
 }
 export function codexRuntimePath(cwd) {
     const key = crypto.createHash("sha1").update(path.resolve(cwd)).digest("hex");

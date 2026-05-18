@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { loadAccount } from "./login.js";
-import { CLAIMS_DIR, CONTEXT_PATH, CURSOR_PATH, WIRE_VERSION, ensureOmwHome, readJson, writeJson, } from "./paths.js";
+import { cleanupLegacyClaimsDir, CONTEXT_PATH, CURSOR_PATH, WIRE_VERSION, ensureOmwHome, readJson, writeJson, } from "./paths.js";
 const MSG_USER = 1;
 const MSG_BOT = 2;
 const MSG_DONE = 2;
@@ -19,6 +19,7 @@ const UPLOAD_VOICE = 4;
 const CDN_URL = "https://novac2c.cdn.weixin.qq.com/c2c";
 const PROJECT_OMW_DIR = ".oh-my-wechat";
 const INCOMING_MEDIA_DIR = "incoming-media";
+const CLAIM_CACHE_LIMIT = 2_000;
 function normalizeBase(baseUrl) {
     return baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
 }
@@ -162,23 +163,22 @@ function messageKey(account, raw) {
         raw.context_token ?? "",
     ].join("|");
 }
-function claimMessage(key) {
-    ensureOmwHome();
-    fs.mkdirSync(CLAIMS_DIR, { recursive: true });
-    const claimPath = path.join(CLAIMS_DIR, `${crypto.createHash("sha1").update(key).digest("hex")}.json`);
-    try {
-        fs.writeFileSync(claimPath, JSON.stringify({ key, pid: process.pid, at: new Date().toISOString() }), { flag: "wx" });
-        return true;
-    }
-    catch (error) {
-        if (typeof error === "object" &&
-            error &&
-            "code" in error &&
-            error.code === "EEXIST") {
-            return false;
+function trimClaimCache(claims) {
+    while (claims.size > CLAIM_CACHE_LIMIT) {
+        const oldest = claims.keys().next().value;
+        if (!oldest) {
+            return;
         }
-        return true;
+        claims.delete(oldest);
     }
+}
+function claimMessage(claims, key) {
+    if (claims.has(key)) {
+        return false;
+    }
+    claims.set(key, Date.now());
+    trimClaimCache(claims);
+    return true;
 }
 function fileSizeLabel(bytes) {
     if (bytes > 1024 * 1024) {
@@ -253,9 +253,13 @@ export class WechatWire {
     workspaceCwd;
     cursor = "";
     contexts = new Map();
+    claims = new Map();
     constructor(log = () => undefined, workspaceCwd = process.cwd()) {
         this.log = log;
         this.workspaceCwd = workspaceCwd;
+        if (cleanupLegacyClaimsDir()) {
+            this.log("Cleaned legacy message-claims cache.");
+        }
         this.cursor = fs.existsSync(CURSOR_PATH) ? fs.readFileSync(CURSOR_PATH, "utf8") : "";
         this.contexts = new Map(Object.entries(readJson(CONTEXT_PATH) ?? {}));
     }
@@ -310,7 +314,7 @@ export class WechatWire {
             if (!content.text && content.attachments.length === 0) {
                 continue;
             }
-            if (!claimMessage(messageKey(account, raw))) {
+            if (!claimMessage(this.claims, messageKey(account, raw))) {
                 continue;
             }
             if (raw.context_token && raw.from_user_id) {

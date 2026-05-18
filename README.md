@@ -284,7 +284,6 @@ omw bridge --mode shell --command "pwsh"
 - `account.json`：登录信息
 - `sync-cursor.txt`：微信增量游标
 - `reply-contexts.json`：回复上下文
-- `message-claims/`：消息去重
 - `active-bridge-lock.json`：活动 bridge 锁
 - `codex-runtime/`：Codex runtime endpoint 信息
 

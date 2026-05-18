@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { loadAccount, type OmwAccount } from "./login.js";
 import {
-  CLAIMS_DIR,
+  cleanupLegacyClaimsDir,
   CONTEXT_PATH,
   CURSOR_PATH,
   WIRE_VERSION,
@@ -29,6 +29,7 @@ const UPLOAD_VOICE = 4;
 const CDN_URL = "https://novac2c.cdn.weixin.qq.com/c2c";
 const PROJECT_OMW_DIR = ".oh-my-wechat";
 const INCOMING_MEDIA_DIR = "incoming-media";
+const CLAIM_CACHE_LIMIT = 2_000;
 
 type AttachmentKind = "image" | "video" | "file" | "voice";
 
@@ -276,24 +277,23 @@ function messageKey(account: OmwAccount, raw: RawMsg): string {
   ].join("|");
 }
 
-function claimMessage(key: string): boolean {
-  ensureOmwHome();
-  fs.mkdirSync(CLAIMS_DIR, { recursive: true });
-  const claimPath = path.join(CLAIMS_DIR, `${crypto.createHash("sha1").update(key).digest("hex")}.json`);
-  try {
-    fs.writeFileSync(claimPath, JSON.stringify({ key, pid: process.pid, at: new Date().toISOString() }), { flag: "wx" });
-    return true;
-  } catch (error) {
-    if (
-      typeof error === "object" &&
-      error &&
-      "code" in error &&
-      (error as { code?: string }).code === "EEXIST"
-    ) {
-      return false;
+function trimClaimCache(claims: Map<string, number>): void {
+  while (claims.size > CLAIM_CACHE_LIMIT) {
+    const oldest = claims.keys().next().value;
+    if (!oldest) {
+      return;
     }
-    return true;
+    claims.delete(oldest);
   }
+}
+
+function claimMessage(claims: Map<string, number>, key: string): boolean {
+  if (claims.has(key)) {
+    return false;
+  }
+  claims.set(key, Date.now());
+  trimClaimCache(claims);
+  return true;
 }
 
 function fileSizeLabel(bytes: number): string {
@@ -372,11 +372,15 @@ function detectFileExtension(kind: AttachmentKind, data: Buffer): string {
 export class WechatWire {
   private cursor = "";
   private contexts = new Map<string, string>();
+  private readonly claims = new Map<string, number>();
 
   constructor(
     private readonly log: (line: string) => void = () => undefined,
     private readonly workspaceCwd: string = process.cwd(),
   ) {
+    if (cleanupLegacyClaimsDir()) {
+      this.log("Cleaned legacy message-claims cache.");
+    }
     this.cursor = fs.existsSync(CURSOR_PATH) ? fs.readFileSync(CURSOR_PATH, "utf8") : "";
     this.contexts = new Map(Object.entries(readJson<ContextStore>(CONTEXT_PATH) ?? {}));
   }
@@ -436,7 +440,7 @@ export class WechatWire {
       if (!content.text && content.attachments.length === 0) {
         continue;
       }
-      if (!claimMessage(messageKey(account, raw))) {
+      if (!claimMessage(this.claims, messageKey(account, raw))) {
         continue;
       }
       if (raw.context_token && raw.from_user_id) {
