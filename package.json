@@ -1,0 +1,64 @@
+{
+  "name": "oh-my-wechat",
+  "version": "0.1.0",
+  "description": "WeChat bridge for local Codex, Claude Code, OpenCode, and shell workflows",
+  "author": "Zhenxun Du <duzhenxun@126.com>",
+  "type": "module",
+  "files": [
+    "bin/",
+    "dist/",
+    "README.md",
+    "LICENSE.txt"
+  ],
+  "keywords": [
+    "wechat",
+    "cli",
+    "bridge",
+    "codex",
+    "claude",
+    "opencode",
+    "terminal"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "omw": "bin/omw.mjs",
+    "omw-setup": "bin/omw-setup.mjs",
+    "omw-bridge": "bin/omw-bridge.mjs",
+    "omw-codex": "bin/omw-codex.mjs",
+    "omw-claude": "bin/omw-claude.mjs",
+    "omw-opencode": "bin/omw-opencode.mjs",
+    "omw-shell": "bin/omw-shell.mjs",
+    "omw-check-update": "bin/omw-check-update.mjs"
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "setup": "node --no-warnings --experimental-strip-types src/wechat/login.ts",
+    "bridge": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts",
+    "codex": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode codex",
+    "claude": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode claude",
+    "opencode": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode opencode",
+    "shell": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode shell",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@opencode-ai/sdk": "^1.15.4",
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.20.1"
+  },
+  "optionalDependencies": {
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}

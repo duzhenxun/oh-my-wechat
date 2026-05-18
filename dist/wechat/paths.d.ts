@@ -1,0 +1,45 @@
+export declare const ILINK_BASE_URL: string;
+export declare const ILINK_BOT_TYPE: string;
+export declare const WIRE_VERSION = "0.3.0";
+export declare const OMW_HOME: string;
+export declare const ACCOUNT_PATH: string;
+export declare const CURSOR_PATH: string;
+export declare const CONTEXT_PATH: string;
+export declare const CLAIMS_DIR: string;
+export declare const BRIDGE_LOCK_PATH: string;
+export declare const CODEX_RUNTIME_DIR: string;
+export type CodexRuntimeEndpoint = {
+    cwd: string;
+    command: string;
+    url: string;
+    tokenEnv: string;
+    token: string;
+    bridgePid: number;
+    serverPid?: number;
+    startedAt: string;
+};
+export type BridgeLock = {
+    pid: number;
+    mode: string;
+    cwd: string;
+    startedAt: string;
+};
+export declare function ensureOmwHome(): void;
+export declare function readJson<T>(filePath: string): T | null;
+export declare function writeJson(filePath: string, value: unknown): void;
+export declare function codexRuntimePath(cwd: string): string;
+export declare function writeCodexRuntimeEndpoint(endpoint: CodexRuntimeEndpoint): void;
+export declare function readCodexRuntimeEndpoint(cwd: string): CodexRuntimeEndpoint | null;
+export declare function clearCodexRuntimeEndpoint(cwd: string): void;
+export declare function clearCodexRuntimeEndpointForPid(pid: number): void;
+export declare function readActiveCodexRuntimeEndpoint(cwd: string): CodexRuntimeEndpoint | null;
+export declare function readBridgeLock(): BridgeLock | null;
+export declare function isProcessAlive(pid: number): boolean;
+export declare function killBridgeProcess(pid: number): void;
+export declare function listOtherBridgePids(currentPid: number): number[];
+export declare function killOtherBridges(currentPid: number, waitMs?: number): Promise<void>;
+export declare function acquireBridgeLock(lock: BridgeLock, options?: {
+    replaceExisting?: boolean;
+    waitMs?: number;
+}): Promise<void>;
+export declare function releaseBridgeLock(pid: number): void;

@@ -1,0 +1,54 @@
+import type { Agent, AgentEvent, AgentState } from "./types.js";
+type CodexRemoteEndpoint = {
+    command: string;
+    url: string;
+    tokenEnv: string;
+    token: string;
+    serverPid?: number;
+};
+type CodexRuntimeOptions = {
+    command?: string;
+    cwd: string;
+    args?: string[];
+};
+export declare class CodexRuntimeAgent implements Agent {
+    private readonly options;
+    private sink;
+    private server;
+    private socket;
+    private requestId;
+    private threadId;
+    private activeTurnId;
+    private pendingTurnStartThreadId;
+    private tokenFile;
+    private token;
+    private serverLog;
+    private initialized;
+    private pending;
+    private finalTextByTurn;
+    private pendingApproval;
+    private readonly stateValue;
+    constructor(options: CodexRuntimeOptions);
+    private debug;
+    onEvent(sink: (event: AgentEvent) => void): void;
+    start(): Promise<void>;
+    send(text: string): Promise<void>;
+    stop(): Promise<boolean>;
+    approve(yes: boolean): Promise<boolean>;
+    reset(): Promise<void>;
+    state(): AgentState;
+    close(): Promise<void>;
+    getRemoteEndpoint(): CodexRemoteEndpoint;
+    private initialize;
+    private ensureThread;
+    private connect;
+    private rpc;
+    private sendRpcMessage;
+    private handleMessage;
+    private handleServerRequest;
+    private handleNotification;
+    private rejectPending;
+    private appendServerLog;
+    private setStatus;
+}
+export {};

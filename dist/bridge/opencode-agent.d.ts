@@ -1,0 +1,40 @@
+import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.js";
+type OpenCodeAgentOptions = {
+    mode: OmwMode;
+    command?: string;
+    cwd: string;
+    args?: string[];
+};
+export declare class OpenCodeAgent implements Agent {
+    private readonly options;
+    private sink;
+    private server;
+    private client;
+    private abortEvents;
+    private sessionId;
+    private workspaceId;
+    private activeMessageId;
+    private activeAssistantMessageId;
+    private pendingPermissionId;
+    private partTextById;
+    private finalText;
+    private readonly stateValue;
+    constructor(options: OpenCodeAgentOptions);
+    onEvent(sink: (event: AgentEvent) => void): void;
+    start(): Promise<void>;
+    send(text: string): Promise<void>;
+    stop(): Promise<boolean>;
+    approve(yes: boolean): Promise<boolean>;
+    reset(): Promise<void>;
+    state(): AgentState;
+    close(): Promise<void>;
+    private createClient;
+    private ensureSession;
+    private watchEvents;
+    private consumeEvents;
+    private handleEvent;
+    private finishActiveTurn;
+    private emitDebug;
+    private setStatus;
+}
+export {};
