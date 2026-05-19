@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import {
+  buildUpgradeCommand,
   compareVersions,
   fetchLatestVersion,
   readLocalPackageInfo,
@@ -39,7 +40,7 @@ async function main(): Promise<void> {
     const comparison = compareVersions(pkg.version, latestResult.latestVersion);
     if (comparison === -1) {
       console.log("status: update available");
-      console.log(`upgrade: npm i -g ${pkg.name}@latest`);
+      console.log(`upgrade: ${buildUpgradeCommand(pkg.name, { argv: process.argv, env: process.env })}`);
       return;
     }
     if (comparison === 0 || comparison === 1) {

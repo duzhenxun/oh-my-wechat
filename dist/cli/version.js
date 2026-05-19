@@ -83,12 +83,38 @@ export function compareVersions(local, latest) {
     }
     return 0;
 }
-export function buildUpgradeHint(name, local, latest) {
+function isNpxExecution(options = {}) {
+    const argv = options.argv ?? process.argv;
+    const env = options.env ?? process.env;
+    const execPath = env.npm_execpath ?? "";
+    const userAgent = env.npm_config_user_agent ?? "";
+    if (env.npm_command === "exec") {
+        return true;
+    }
+    if (/\bnpx-cli\.js$/.test(execPath) || /\bnpm-cli\.js$/.test(execPath) && argv.includes("exec")) {
+        return true;
+    }
+    if (/\bnpx\//.test(userAgent)) {
+        return true;
+    }
+    return false;
+}
+export function buildUpgradeCommand(name, options = {}) {
+    if (isNpxExecution(options)) {
+        return `npx ${name}@latest <command>`;
+    }
+    return `npm install -g ${name}@latest`;
+}
+export function buildUpgradeHint(name, local, latest, options = {}) {
     const comparison = compareVersions(local, latest);
     if (comparison !== -1) {
         return null;
     }
-    return `Update available: ${local} -> ${latest}. Run: npm i -g ${name}@latest`;
+    const command = buildUpgradeCommand(name, options);
+    return [
+        `A newer version is available: ${local} -> ${latest}`,
+        `Upgrade command: ${command}`,
+    ].join("\n");
 }
 function parseVersion(version) {
     const match = version.trim().match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/);

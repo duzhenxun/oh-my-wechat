@@ -7,7 +7,6 @@ import path from "node:path";
 import { buildUpgradeHint, fetchLatestVersion, readLocalPackageInfo } from "./version.js";
 
 const PKG = readLocalPackageInfo();
-const BRIDGE_MODES = ["codex", "claude", "opencode", "shell"] as const;
 
 function globalUsage(): string {
   return [
@@ -19,9 +18,6 @@ function globalUsage(): string {
     "Commands:",
     "  setup         登录或重新登录微信账号",
     "                用法: omw setup [--force]",
-    "",
-    "  bridge        以显式 mode 启动 bridge",
-    `                用法: omw bridge --mode <${BRIDGE_MODES.join("|")}> [--cwd <dir>] [--command <cmd>] [args...]`,
     "",
     "  codex         启动 Codex bridge",
     "                用法: omw codex [--cwd <dir>] [--command <cmd>] [args...]",
@@ -40,17 +36,14 @@ function globalUsage(): string {
     "",
     "Common options:",
     "  -h, --help       显示帮助",
-    "  --cwd <dir>      指定 bridge 工作目录",
+    "  --cwd <dir>      指定工作目录",
     "  --command <cmd>  覆盖默认本地 agent 启动命令",
     "  --force          setup 时强制重新登录",
-    "  --mode <mode>    bridge 模式，仅 bridge 子命令使用",
-    "  --adapter <mode> --mode 的别名",
     "",
     "Examples:",
     "  omw setup --force",
     "  omw codex --cwd ~/work/project",
     "  omw claude --command claude-code",
-    "  omw bridge --mode shell --cwd ~/work/project",
     "  omw check-update",
     "",
     "Run 'omw <command> --help' for command-specific help.",
@@ -82,32 +75,6 @@ function commandUsage(subcommand: string): string {
         "  omw setup --qr-large",
         "",
       ].join("\n");
-    case "bridge":
-      return [
-        `oh-my-wechat v${PKG.version}`,
-        "",
-        "Usage:",
-        `  omw bridge --mode <${BRIDGE_MODES.join("|")}> [--cwd <dir>] [--command <cmd>] [args...]`,
-        "",
-        "Description:",
-        "  以显式 mode 启动 bridge，适合脚本或手动指定运行模式。",
-        "",
-        "Options:",
-        "  --mode <mode>       指定 bridge 模式",
-        "  --adapter <mode>    --mode 的别名",
-        "  --cwd <dir>         指定工作目录，默认当前目录",
-        "  --command <cmd>     覆盖默认本地 agent 启动命令",
-        "  -h, --help          显示帮助",
-        "",
-        "Notes:",
-        "  其余参数会继续透传给对应本地 agent。",
-        "",
-        "Examples:",
-        "  omw bridge --mode codex",
-        "  omw bridge --mode shell --cwd ~/work/project",
-        "  omw bridge --mode claude --command claude-code",
-        "",
-      ].join("\n");
     case "codex":
       return [
         `oh-my-wechat v${PKG.version}`,
@@ -124,7 +91,6 @@ function commandUsage(subcommand: string): string {
         "  -h, --help        显示帮助",
         "",
         "Notes:",
-        "  等价于 omw bridge --mode codex ...",
         "  其余参数会继续透传给 Codex。",
         "",
         "Examples:",
@@ -149,7 +115,6 @@ function commandUsage(subcommand: string): string {
         "  -h, --help        显示帮助",
         "",
         "Notes:",
-        "  等价于 omw bridge --mode claude ...",
         "  其余参数会继续透传给 Claude Code。",
         "",
         "Examples:",
@@ -174,7 +139,6 @@ function commandUsage(subcommand: string): string {
         "  -h, --help        显示帮助",
         "",
         "Notes:",
-        "  等价于 omw bridge --mode opencode ...",
         "  其余参数会继续透传给 OpenCode。",
         "",
         "Examples:",
@@ -199,7 +163,6 @@ function commandUsage(subcommand: string): string {
         "  -h, --help        显示帮助",
         "",
         "Notes:",
-        "  等价于 omw bridge --mode shell ...",
         "  其余参数会继续透传给 shell。",
         "",
         "Examples:",
@@ -251,7 +214,10 @@ async function notifyIfUpdateAvailable(): Promise<void> {
   if (latestResult.status !== "ok") {
     return;
   }
-  const hint = buildUpgradeHint(PKG.name, PKG.version, latestResult.latestVersion);
+  const hint = buildUpgradeHint(PKG.name, PKG.version, latestResult.latestVersion, {
+    argv: process.argv,
+    env: process.env,
+  });
   if (!hint) {
     return;
   }
@@ -261,7 +227,6 @@ async function notifyIfUpdateAvailable(): Promise<void> {
 const [subcommand, ...rest] = process.argv.slice(2);
 const map: Record<string, string> = {
   setup: "omw-setup.mjs",
-  bridge: "omw-bridge.mjs",
   codex: "omw-codex.mjs",
   claude: "omw-claude.mjs",
   opencode: "omw-opencode.mjs",

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { compareVersions, fetchLatestVersion, readLocalPackageInfo, } from "./version.js";
+import { buildUpgradeCommand, compareVersions, fetchLatestVersion, readLocalPackageInfo, } from "./version.js";
 function usage(pkgName, version) {
     return [
         `${pkgName} v${version}`,
@@ -29,7 +29,7 @@ async function main() {
         const comparison = compareVersions(pkg.version, latestResult.latestVersion);
         if (comparison === -1) {
             console.log("status: update available");
-            console.log(`upgrade: npm i -g ${pkg.name}@latest`);
+            console.log(`upgrade: ${buildUpgradeCommand(pkg.name, { argv: process.argv, env: process.env })}`);
             return;
         }
         if (comparison === 0 || comparison === 1) {

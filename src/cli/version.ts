@@ -21,6 +21,11 @@ type ParsedVersion = {
   prerelease: PrereleasePart[];
 };
 
+type UpgradeCommandOptions = {
+  argv?: string[];
+  env?: NodeJS.ProcessEnv;
+};
+
 export function packageRoot(): string {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 }
@@ -113,12 +118,41 @@ export function compareVersions(local: string, latest: string): -1 | 0 | 1 | nul
   return 0;
 }
 
-export function buildUpgradeHint(name: string, local: string, latest: string): string | null {
+function isNpxExecution(options: UpgradeCommandOptions = {}): boolean {
+  const argv = options.argv ?? process.argv;
+  const env = options.env ?? process.env;
+  const execPath = env.npm_execpath ?? "";
+  const userAgent = env.npm_config_user_agent ?? "";
+
+  if (env.npm_command === "exec") {
+    return true;
+  }
+  if (/\bnpx-cli\.js$/.test(execPath) || /\bnpm-cli\.js$/.test(execPath) && argv.includes("exec")) {
+    return true;
+  }
+  if (/\bnpx\//.test(userAgent)) {
+    return true;
+  }
+  return false;
+}
+
+export function buildUpgradeCommand(name: string, options: UpgradeCommandOptions = {}): string {
+  if (isNpxExecution(options)) {
+    return `npx ${name}@latest <command>`;
+  }
+  return `npm install -g ${name}@latest`;
+}
+
+export function buildUpgradeHint(name: string, local: string, latest: string, options: UpgradeCommandOptions = {}): string | null {
   const comparison = compareVersions(local, latest);
   if (comparison !== -1) {
     return null;
   }
-  return `Update available: ${local} -> ${latest}. Run: npm i -g ${name}@latest`;
+  const command = buildUpgradeCommand(name, options);
+  return [
+    `A newer version is available: ${local} -> ${latest}`,
+    `Upgrade command: ${command}`,
+  ].join("\n");
 }
 
 function parseVersion(version: string): ParsedVersion | null {
