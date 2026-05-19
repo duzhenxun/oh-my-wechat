@@ -38,11 +38,14 @@ export type OmwAccount = {
   savedAt: string;
 };
 
+export type QrRenderMode = "auto" | "small" | "large";
+
 export type LoginOptions = {
   baseUrl?: string;
   timeoutMs?: number;
   pollEveryMs?: number;
   force?: boolean;
+  qrRenderMode?: QrRenderMode;
   log?: (line: string) => void;
 };
 
@@ -52,6 +55,16 @@ function normalizeBaseUrl(value: string): string {
 
 function randomUinHeader(): string {
   return Buffer.from(String(crypto.randomBytes(4).readUInt32BE(0))).toString("base64");
+}
+
+function resolveQrOptions(mode: QrRenderMode | undefined): { small?: boolean } {
+  if (mode === "small") {
+    return { small: true };
+  }
+  if (mode === "large") {
+    return {};
+  }
+  return process.platform === "win32" ? {} : { small: true };
 }
 
 export function loadAccount(): OmwAccount | null {
@@ -162,8 +175,9 @@ export async function ensureLogin(options: LoginOptions = {}): Promise<OmwAccoun
 
   const baseUrl = options.baseUrl ?? ILINK_BASE_URL;
   const qr = await fetchLoginQr(baseUrl);
+  const qrOptions = resolveQrOptions(options.qrRenderMode);
   log("Scan this QR code in WeChat to authorize oh-my-wechat:");
-  qrcode.generate(qr.qrcode_img_content || qr.qrcode, { small: true }, (text: string) => log(`${text}\n`));
+  qrcode.generate(qr.qrcode_img_content || qr.qrcode, qrOptions, (text: string) => log(`${text}\n`));
 
   const deadline = Date.now() + (options.timeoutMs ?? 3 * 60_000);
   const pollEveryMs = options.pollEveryMs ?? 1_500;
@@ -197,8 +211,22 @@ export async function ensureLogin(options: LoginOptions = {}): Promise<OmwAccoun
   throw new Error("Timed out waiting for WeChat login confirmation.");
 }
 
+function parseQrRenderMode(argv: string[]): QrRenderMode | undefined {
+  if (argv.includes("--qr-small")) {
+    return "small";
+  }
+  if (argv.includes("--qr-large")) {
+    return "large";
+  }
+  return undefined;
+}
+
 export async function runLoginCli(): Promise<void> {
-  await ensureLogin({ force: process.argv.includes("--force") });
+  const qrRenderMode = parseQrRenderMode(process.argv);
+  await ensureLogin({
+    force: process.argv.includes("--force"),
+    ...(qrRenderMode ? { qrRenderMode } : {}),
+  });
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

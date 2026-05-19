@@ -6,11 +6,13 @@ export type OmwAccount = {
     userId?: string;
     savedAt: string;
 };
+export type QrRenderMode = "auto" | "small" | "large";
 export type LoginOptions = {
     baseUrl?: string;
     timeoutMs?: number;
     pollEveryMs?: number;
     force?: boolean;
+    qrRenderMode?: QrRenderMode;
     log?: (line: string) => void;
 };
 export declare function loadAccount(): OmwAccount | null;
