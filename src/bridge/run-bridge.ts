@@ -11,6 +11,7 @@ import {
 } from "../wechat/paths.js";
 import { ensureLogin } from "../wechat/login.js";
 import { WechatWire } from "../wechat/wire.js";
+import { readLocalPackageInfo } from "../cli/version.js";
 import { CodexRuntimeAgent } from "./codex-runtime-agent.js";
 import { ClaudePrintAgent } from "./claude-print-agent.js";
 import { OpenCodeAgent } from "./opencode-agent.js";
@@ -42,13 +43,15 @@ type PendingWechatMessage = {
 
 const POLL_RETRY_MIN = 1_000;
 const POLL_RETRY_MAX = 30_000;
+const PKG = readLocalPackageInfo();
 
 type LocalLogKind = "system" | "user" | "agent";
 
 const ANSI_RESET = "\x1b[0m";
 const ANSI_DIM = "\x1b[90m";
-const ANSI_MAGENTA = "\x1b[35m";
+const ANSI_CYAN = "\x1b[36m";
 const ANSI_YELLOW = "\x1b[33m";
+const ANSI_CODE = "\x1b[38;5;111m";
 const ANSI_WHITE = "\x1b[97m";
 
 function localTimestamp(date = new Date()): string {
@@ -68,16 +71,28 @@ function paint(text: string, color: string): string {
   return `${color}${text}${ANSI_RESET}`;
 }
 
+function highlightTerminalTokens(text: string, color: string): string {
+  if (!process.stderr.isTTY || process.env.NO_COLOR) {
+    return text;
+  }
+
+  const withInlineCode = text.replace(/`([^`]+)`/g, (_match, code: string) => `${color}${code}${ANSI_RESET}`);
+  return withInlineCode.replace(
+    /(^|[^\w./-])((?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+(?::\d+)?)(?=$|[^\w./:-])/g,
+    (_match, prefix: string, token: string) => `${prefix}${color}${token}${ANSI_RESET}`,
+  );
+}
+
 function formatLocalLine(line: string, kind: LocalLogKind, mode?: OmwMode): string {
   const stamp = paint(`[${localTimestamp()}]`, ANSI_WHITE);
   if (kind === "agent") {
     const label = paint(`[${mode ?? "agent"}]`, ANSI_YELLOW);
-    const body = paint(line, ANSI_WHITE);
+    const body = highlightTerminalTokens(line, ANSI_CODE);
     return `${stamp} ${label} ${body}`;
   }
   const label = paint("[oh-my-wechat]", ANSI_DIM);
   const body = kind === "user"
-    ? paint(line, ANSI_MAGENTA)
+    ? paint(line, ANSI_CYAN)
     : paint(line, ANSI_DIM);
   return `${stamp} ${label} ${body}`;
 }
@@ -138,31 +153,35 @@ export function parseArgs(argv: string[]): BridgeOptions {
 
 function helpText(): string {
   return [
-    "微信快捷指令：",
-    "/h 帮助  /status 状态",
-    "/stop 中断  /reset 重启",
-    "/yes 同意  /no 拒绝",
+    "快捷指令：",
+    "/h 帮助   /status 状态",
+    "/stop 中断   /new 新会话",
     "",
-    "直接发送普通消息，我就会开始处理。",
+    "审批回复：",
+    "y / n   1 / 0   同意 / 拒绝",
   ].join("\n");
 }
 
-function bridgeOnlineText(mode: OmwMode, cwd: string): string {
+function bridgeOnlineText(mode: OmwMode, cwd: string, version: string): string {
   return [
     "你好！👋 很高兴见到你！",
-    "我是 oh-my-wechat，简称我 omw，你的 AI 助手。我可以帮你处理各种任务，比如：",
-    "- **文件操作**：读取、编辑、搜索文件",
-    "- **终端命令**：执行 shell 命令、管理进程",
-    "- **网页浏览**：访问网站、点击元素、填写表单",
-    "- **代码执行**：运行 Python 脚本",
-    "- **任务管理**：创建待办事项、设置定时任务",
-    "- **技能调用**：我有丰富的技能库，可以处理特定领域的任务",
-    "有什么我可以帮你的吗？无论是技术问题、日常任务，还是创意项目，我都很乐意协助！",
+    "我是 oh-my-wechat，简称 omw，你的 AI 助手。",
+    "我可以帮你处理这些事情：",
+    "- 文件操作：读取、编辑、搜索文件",
+    "- 终端命令：执行 shell 命令、管理进程",
+    "- 网页浏览：访问网站、点击元素、填写表单",
+    "- 代码执行：运行 Python 脚本",
+    "- 任务管理：创建待办事项、设置定时任务",
+    "- 技能调用：处理特定领域任务",
     "",
-    `当前的工作目录是：${cwd}`,
-    `当前的Agent是：${mode} agent`,
+    "当前信息：",
+    `- 版本：oh-my-wechat v${version}`,
+    `- Agent：${mode} agent`,
+    `- 目录：${cwd}`,
     "",
     helpText(),
+    "",
+    "直接发送普通消息，我就会开始处理。",
   ].join("\n");
 }
 
@@ -170,13 +189,17 @@ function formatEvent(event: AgentEvent): string | null {
   switch (event.type) {
     case "approval":
       return [
-        "需要确认操作：",
+        "需要确认操作",
+        `审批编号：${event.ticket.id}`,
+        "",
         event.ticket.summary,
         "",
+        "执行内容：",
         event.ticket.preview,
         "",
-        `审批编号：${event.ticket.id}`,
-        "回复 /yes 继续，或回复 /no 拒绝。",
+        "快捷回复：",
+        "同意：y / 1 / 同意",
+        "拒绝：n / 0 / 拒绝",
       ].join("\n");
     case "failed":
       return `任务失败：${event.message}`;
@@ -223,17 +246,24 @@ async function answerControl(
       return true;
     }
     case "/reset":
+    case "/new":
       await agent.reset();
       await wire.sendText("本地 CLI 已重启。", senderId);
       return true;
     case "/yes":
-    case "/confirm": {
+    case "/confirm":
+    case "y":
+    case "1":
+    case "同意": {
       const ok = await agent.approve(true);
       await wire.sendText(ok ? "已同意。" : "当前没有待确认操作。", senderId);
       return true;
     }
     case "/no":
-    case "/deny": {
+    case "/deny":
+    case "n":
+    case "0":
+    case "拒绝": {
       const ok = await agent.approve(false);
       await wire.sendText(ok ? "已拒绝。" : "当前没有待确认操作。", senderId);
       return true;
@@ -445,7 +475,7 @@ export async function runBridge(options: BridgeOptions): Promise<void> {
         startedAt: new Date().toISOString(),
       });
     }
-    await wire.sendText(bridgeOnlineText(options.mode, options.cwd)).catch(() => undefined);
+    await wire.sendText(bridgeOnlineText(options.mode, options.cwd, PKG.version)).catch(() => undefined);
 
     log(`Bridge online in ${options.cwd}; mode=${options.mode}`);
     const startedAt = Date.now();

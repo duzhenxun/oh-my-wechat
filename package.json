@@ -1,6 +1,6 @@
 {
   "name": "oh-my-wechat",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "WeChat bridge for local Codex, Claude Code, OpenCode, and shell workflows",
   "author": "Zhenxun Du <duzhenxun@126.com>",
   "type": "module",

@@ -5,10 +5,12 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import net from "node:net";
 import WebSocket from "ws";
+import { readLocalPackageInfo } from "../cli/version.js";
 import { cleanTerminalText, defaultCommand, now, preview, splitCommand } from "./text.js";
 const HOST = "127.0.0.1";
 const TOKEN_ENV = "OH_MY_WECHAT_CODEX_REMOTE_TOKEN";
 const DEBUG = process.env.OH_MY_WECHAT_CODEX_DEBUG === "1";
+const OMW_VERSION = readLocalPackageInfo().version;
 export class CodexRuntimeAgent {
     options;
     sink = () => undefined;
@@ -217,7 +219,7 @@ export class CodexRuntimeAgent {
             clientInfo: {
                 name: "oh-my-wechat",
                 title: "oh-my-wechat",
-                version: "0.1.0",
+                version: OMW_VERSION,
             },
             capabilities: {
                 experimentalApi: true,
