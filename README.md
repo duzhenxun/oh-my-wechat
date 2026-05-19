@@ -2,6 +2,8 @@
 
 `oh-my-wechat` 用来把微信消息桥接到本地 CLI agent。你可以在微信里远程驱动本机的 `Codex`、`Claude Code`、`OpenCode`，或者一个持久 shell，并把结果、附件和审批流再回到微信。
 
+![微信里的 Agent 助手预览](docs/images/wechat-agent-preview.svg)
+
 ## 主要能力
 
 - 在微信里给本地 agent 发消息并接收结果
