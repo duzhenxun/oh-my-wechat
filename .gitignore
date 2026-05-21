@@ -10,3 +10,4 @@ pnpm-debug.log*
 .npmrc
 .npm-cache/
 .learnings/
+.oh-my-wechat/
