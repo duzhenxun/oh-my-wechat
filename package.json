@@ -1,6 +1,6 @@
 {
   "name": "oh-my-wechat",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "WeChat bridge for local Codex, Claude Code, OpenCode, and shell workflows",
   "author": "Zhenxun Du <duzhenxun@126.com>",
   "type": "module",
@@ -39,10 +39,15 @@
     "prepack": "npm run build",
     "setup": "node --no-warnings --experimental-strip-types src/wechat/login.ts",
     "bridge": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts",
+    "bridge:debug": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --wechat-http-log",
     "codex": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode codex",
+    "codex:debug": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode codex --wechat-http-log",
     "claude": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode claude",
+    "claude:debug": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode claude --wechat-http-log",
     "opencode": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode opencode",
+    "opencode:debug": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode opencode --wechat-http-log",
     "shell": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode shell",
+    "shell:debug": "node --no-warnings --experimental-strip-types src/bridge/run-bridge.ts --mode shell --wechat-http-log",
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

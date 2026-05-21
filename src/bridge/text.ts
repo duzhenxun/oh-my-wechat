@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { IncomingWechatAttachment } from "../wechat/wire.js";
+import type { IncomingWechatAttachment } from "../wechat/wire.ts";
 
 export function now(): string {
   return new Date().toISOString();

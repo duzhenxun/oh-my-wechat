@@ -1,4 +1,4 @@
-import type { Agent, AgentEvent, AgentState } from "./types.js";
+import type { Agent, AgentEvent, AgentState } from "./types.ts";
 type CodexRemoteEndpoint = {
     command: string;
     url: string;
@@ -12,7 +12,6 @@ type CodexRuntimeOptions = {
     args?: string[];
 };
 export declare class CodexRuntimeAgent implements Agent {
-    private readonly options;
     private sink;
     private server;
     private socket;
@@ -28,6 +27,7 @@ export declare class CodexRuntimeAgent implements Agent {
     private finalTextByTurn;
     private pendingApproval;
     private readonly stateValue;
+    private readonly options;
     constructor(options: CodexRuntimeOptions);
     private debug;
     onEvent(sink: (event: AgentEvent) => void): void;

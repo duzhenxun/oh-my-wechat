@@ -1,0 +1,47 @@
+import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.ts";
+type OpenCodeAcpAgentOptions = {
+    mode: OmwMode;
+    command?: string;
+    cwd: string;
+    args?: string[];
+};
+export declare class OpenCodeAcpAgent implements Agent {
+    private sink;
+    private server;
+    private requestId;
+    private pending;
+    private stdoutBuffer;
+    private sessionId;
+    private authMethods;
+    private activePromptId;
+    private finalChunks;
+    private pendingApproval;
+    private readonly stateValue;
+    private readonly options;
+    constructor(options: OpenCodeAcpAgentOptions);
+    onEvent(sink: (event: AgentEvent) => void): void;
+    start(): Promise<void>;
+    send(text: string): Promise<void>;
+    stop(): Promise<boolean>;
+    approve(yes: boolean): Promise<boolean>;
+    reset(): Promise<void>;
+    state(): AgentState;
+    close(): Promise<void>;
+    private initialize;
+    private createSession;
+    private handleStdout;
+    private handleStderr;
+    private handleMessage;
+    private handleResponse;
+    private handleRequest;
+    private handleNotification;
+    private request;
+    private notify;
+    private respond;
+    private respondError;
+    private writeMessage;
+    private rejectPending;
+    private describeSessionError;
+    private setStatus;
+}
+export {};

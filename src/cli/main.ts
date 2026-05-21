@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-import { buildUpgradeHint, fetchLatestVersion, readLocalPackageInfo } from "./version.js";
+import { buildUpgradeHint, fetchLatestVersion, readLocalPackageInfo } from "./version.ts";
 
 const PKG = readLocalPackageInfo();
 
@@ -131,7 +131,7 @@ function commandUsage(subcommand: string): string {
         "  omw opencode [--cwd <dir>] [--command <cmd>] [args...]",
         "",
         "Description:",
-        "  启动 OpenCode bridge，默认本地命令为 opencode。",
+        "  启动 OpenCode bridge（ACP 模式），默认本地命令为 opencode。",
         "",
         "Options:",
         "  --cwd <dir>       指定工作目录，默认当前目录",

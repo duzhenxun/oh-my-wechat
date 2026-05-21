@@ -112,6 +112,7 @@ export function listOtherBridgePids(currentPid) {
     try {
         const output = execFileSync("ps", ["-ax", "-o", "pid=,command="], { encoding: "utf8" });
         const markers = [
+            "src/bridge/run-bridge.ts",
             "dist/bridge/run-bridge.js",
             "bin/omw-bridge.mjs",
             "bin/omw-codex.mjs",

@@ -1,12 +1,12 @@
 import { spawn } from "node:child_process";
 import { defaultCommand, now, preview, splitCommand } from "./text.js";
 export class ClaudePrintAgent {
-    options;
     sink = () => undefined;
     child = null;
     sessionId = null;
     pendingApprovalState = null;
     stateValue;
+    options;
     constructor(options) {
         this.options = options;
         this.stateValue = {

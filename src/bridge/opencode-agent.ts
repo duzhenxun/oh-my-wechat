@@ -1,8 +1,8 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import net from "node:net";
 
-import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.js";
-import { cleanTerminalText, defaultCommand, now, preview, splitCommand } from "./text.js";
+import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.ts";
+import { cleanTerminalText, defaultCommand, now, preview, splitCommand } from "./text.ts";
 
 type SdkResult<T> = ({
   data: T;
@@ -117,8 +117,10 @@ export class OpenCodeAgent implements Agent {
   private partTextById = new Map<string, string>();
   private finalText = "";
   private readonly stateValue: AgentState;
+  private readonly options: OpenCodeAgentOptions;
 
-  constructor(private readonly options: OpenCodeAgentOptions) {
+  constructor(options: OpenCodeAgentOptions) {
+    this.options = options;
     this.stateValue = {
       mode: "opencode",
       command: options.command || defaultCommand("opencode"),

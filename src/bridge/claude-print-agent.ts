@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 
-import type { Agent, AgentEvent, AgentState, ApprovalTicket, OmwMode } from "./types.js";
-import { defaultCommand, now, preview, splitCommand } from "./text.js";
+import type { Agent, AgentEvent, AgentState, ApprovalTicket, OmwMode } from "./types.ts";
+import { defaultCommand, now, preview, splitCommand } from "./text.ts";
 
 type ClaudePrintAgentOptions = {
   mode: OmwMode;
@@ -48,8 +48,10 @@ export class ClaudePrintAgent implements Agent {
   private sessionId: string | null = null;
   private pendingApprovalState: PendingClaudeApproval | null = null;
   private readonly stateValue: AgentState;
+  private readonly options: ClaudePrintAgentOptions;
 
-  constructor(private readonly options: ClaudePrintAgentOptions) {
+  constructor(options: ClaudePrintAgentOptions) {
+    this.options = options;
     this.stateValue = {
       mode: "claude",
       command: options.command || defaultCommand("claude"),

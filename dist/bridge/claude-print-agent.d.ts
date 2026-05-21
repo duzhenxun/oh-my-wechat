@@ -1,4 +1,4 @@
-import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.js";
+import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.ts";
 type ClaudePrintAgentOptions = {
     mode: OmwMode;
     command?: string;
@@ -6,12 +6,12 @@ type ClaudePrintAgentOptions = {
     args?: string[];
 };
 export declare class ClaudePrintAgent implements Agent {
-    private readonly options;
     private sink;
     private child;
     private sessionId;
     private pendingApprovalState;
     private readonly stateValue;
+    private readonly options;
     constructor(options: ClaudePrintAgentOptions);
     onEvent(sink: (event: AgentEvent) => void): void;
     start(): Promise<void>;

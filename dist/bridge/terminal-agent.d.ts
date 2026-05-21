@@ -1,4 +1,4 @@
-import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.js";
+import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.ts";
 type TerminalAgentOptions = {
     mode: OmwMode;
     command?: string;
@@ -6,11 +6,11 @@ type TerminalAgentOptions = {
     args?: string[];
 };
 export declare class TerminalAgent implements Agent {
-    private readonly options;
     private pty;
     private child;
     private sink;
     private readonly stateValue;
+    private readonly options;
     private outputBuffer;
     private flushTimer;
     private pendingCommand;

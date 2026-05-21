@@ -5,7 +5,7 @@ import {
   compareVersions,
   fetchLatestVersion,
   readLocalPackageInfo,
-} from "./version.js";
+} from "./version.ts";
 
 function usage(pkgName: string, version: string): string {
   return [

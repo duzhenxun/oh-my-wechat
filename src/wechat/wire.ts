@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import { loadAccount, type OmwAccount } from "./login.js";
+import { loadAccount, type OmwAccount } from "./login.ts";
 import {
   cleanupLegacyClaimsDir,
   CONTEXT_PATH,
@@ -12,7 +12,7 @@ import {
   ensureOmwHome,
   readJson,
   writeJson,
-} from "./paths.js";
+} from "./paths.ts";
 
 const MSG_USER = 1;
 const MSG_BOT = 2;
@@ -124,6 +124,16 @@ type WechatApiResult = {
 
 type ContextStore = Record<string, string>;
 
+type WireOptions = {
+  httpLog?: boolean;
+};
+
+type HttpLogContext = {
+  log?: (line: string) => void;
+  enabled?: boolean;
+  shouldLog?: (payload: unknown) => boolean;
+};
+
 function normalizeBase(baseUrl: string): string {
   return baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
 }
@@ -156,18 +166,97 @@ function headers(account: OmwAccount, body: string): Record<string, string> {
   };
 }
 
-async function postJson(account: OmwAccount, endpoint: string, bodyValue: unknown, timeoutMs = 35_000): Promise<string> {
+function maskSecret(value: string): string {
+  if (value.length <= 8) {
+    return "***";
+  }
+  return `${value.slice(0, 4)}***${value.slice(-4)}`;
+}
+
+function sanitizeForLog(value: unknown): unknown {
+  if (typeof value === "string") {
+    return value.length > 5000 ? `${value.slice(0, 5000)}...<truncated>` : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForLog(item));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const secretKeys = new Set([
+    "authorization",
+    "token",
+    "context_token",
+    "aes_key",
+    "aeskey",
+    "upload_param",
+    "x-encrypted-param",
+    "encrypted_query_param",
+  ]);
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nested]) => {
+      if (secretKeys.has(key.toLowerCase())) {
+        return [key, typeof nested === "string" ? maskSecret(nested) : "***"];
+      }
+      return [key, sanitizeForLog(nested)];
+    }),
+  );
+}
+
+function formatLogPayload(value: unknown): string {
+  if (typeof value === "string") {
+    try {
+      return JSON.stringify(sanitizeForLog(JSON.parse(value)), null, 2);
+    } catch {
+      return String(sanitizeForLog(value));
+    }
+  }
+  return JSON.stringify(sanitizeForLog(value), null, 2);
+}
+
+function writeHttpLog(context: HttpLogContext | undefined, title: string, payload: unknown): void {
+  if (!context?.enabled || !context.log) {
+    return;
+  }
+  context.log([title, formatLogPayload(payload)].join("\n"));
+}
+
+async function postJson(
+  account: OmwAccount,
+  endpoint: string,
+  bodyValue: unknown,
+  timeoutMs = 35_000,
+  logContext?: HttpLogContext,
+): Promise<string> {
   const body = JSON.stringify(bodyValue);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const url = new URL(endpoint, normalizeBase(account.baseUrl));
+  const requestHeaders = headers(account, body);
   try {
-    const res = await fetch(new URL(endpoint, normalizeBase(account.baseUrl)), {
+    const res = await fetch(url, {
       method: "POST",
-      headers: headers(account, body),
+      headers: requestHeaders,
       body,
       signal: controller.signal,
     });
     const text = await res.text();
+    const responsePayload = {
+      url: url.toString(),
+      status: res.status,
+      ok: res.ok,
+      body: text,
+    };
+    const shouldLog = logContext?.shouldLog ? logContext.shouldLog(responsePayload) : true;
+    if (shouldLog) {
+      writeHttpLog(logContext, `[wechat http request] ${endpoint}`, {
+        url: url.toString(),
+        method: "POST",
+        headers: requestHeaders,
+        body: bodyValue,
+      });
+      writeHttpLog(logContext, `[wechat http response] ${endpoint}`, responsePayload);
+    }
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: ${text}`);
     }
@@ -373,11 +462,18 @@ export class WechatWire {
   private cursor = "";
   private contexts = new Map<string, string>();
   private readonly claims = new Map<string, number>();
+  private readonly httpLogEnabled: boolean;
+  private readonly log: (line: string) => void;
+  private readonly workspaceCwd: string;
 
   constructor(
-    private readonly log: (line: string) => void = () => undefined,
-    private readonly workspaceCwd: string = process.cwd(),
+    log: (line: string) => void = () => undefined,
+    workspaceCwd: string = process.cwd(),
+    options: WireOptions = {},
   ) {
+    this.log = log;
+    this.workspaceCwd = workspaceCwd;
+    this.httpLogEnabled = options.httpLog === true;
     if (cleanupLegacyClaimsDir()) {
       this.log("Cleaned legacy message-claims cache.");
     }
@@ -414,7 +510,7 @@ export class WechatWire {
     const parsed = JSON.parse(await postJson(account, "ilink/bot/getupdates", {
       get_updates_buf: this.cursor,
       base_info: { channel_version: WIRE_VERSION },
-    }, timeoutMs)) as Updates;
+    }, timeoutMs, this.updatesHttpLogContext())) as Updates;
 
     if (parsed.errcode === -14 && /session timeout/i.test(parsed.errmsg ?? "")) {
       this.cursor = "";
@@ -516,6 +612,35 @@ export class WechatWire {
     return kind ? path.join(root, kind) : root;
   }
 
+  private httpLogContext(): HttpLogContext {
+    return {
+      log: this.log,
+      enabled: this.httpLogEnabled,
+    };
+  }
+
+  private updatesHttpLogContext(): HttpLogContext {
+    return {
+      ...this.httpLogContext(),
+      shouldLog: (payload) => {
+        const body = typeof payload === "object" && payload && "body" in payload ? (payload as { body?: unknown }).body : undefined;
+        if (typeof body !== "string") {
+          return true;
+        }
+        try {
+          const parsed = JSON.parse(body) as Updates;
+          return (parsed.msgs?.length ?? 0) > 0;
+        } catch {
+          return true;
+        }
+      },
+    };
+  }
+
+  private logHttp(title: string, payload: unknown): void {
+    writeHttpLog(this.httpLogContext(), title, payload);
+  }
+
   private async materializeAttachments(attachments: IncomingWechatAttachment[]): Promise<IncomingWechatAttachment[]> {
     const output: IncomingWechatAttachment[] = [];
     for (const attachment of attachments) {
@@ -541,7 +666,18 @@ export class WechatWire {
       throw new Error("Attachment is missing download parameters.");
     }
     const key = decodeIncomingAesKey(attachment.aesKey);
-    const res = await fetch(`${CDN_URL}/download?encrypted_query_param=${encodeURIComponent(attachment.downloadParam)}`);
+    const url = `${CDN_URL}/download?encrypted_query_param=${encodeURIComponent(attachment.downloadParam)}`;
+    this.logHttp("[wechat cdn request] download", {
+      url,
+      method: "GET",
+      attachment,
+    });
+    const res = await fetch(url);
+    this.logHttp("[wechat cdn response] download", {
+      url,
+      status: res.status,
+      ok: res.ok,
+    });
     if (!res.ok) {
       throw new Error(`CDN download failed: HTTP ${res.status}`);
     }
@@ -580,7 +716,7 @@ export class WechatWire {
         context_token: contextToken,
       },
       base_info: { channel_version: WIRE_VERSION },
-    }, 15_000)) as WechatApiResult;
+    }, 15_000, this.httpLogContext())) as WechatApiResult;
     assertWechatOk(result, "sendmessage");
   }
 
@@ -609,20 +745,39 @@ export class WechatWire {
       aeskey: aesKey.toString("hex"),
       no_need_thumb: true,
       base_info: { channel_version: WIRE_VERSION },
-    }, 15_000)) as WechatApiResult & { upload_param?: string };
+    }, 15_000, this.httpLogContext())) as WechatApiResult & { upload_param?: string };
     assertWechatOk(uploadInfo, "getuploadurl");
     if (!uploadInfo.upload_param) {
       throw new Error("WeChat upload URL response did not include upload_param.");
     }
     const cipher = createCipheriv("aes-128-ecb", aesKey, null);
     const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
-    const res = await fetch(`${CDN_URL}/upload?encrypted_query_param=${encodeURIComponent(uploadInfo.upload_param)}&filekey=${encodeURIComponent(filekey)}`, {
+    const url = `${CDN_URL}/upload?encrypted_query_param=${encodeURIComponent(uploadInfo.upload_param)}&filekey=${encodeURIComponent(filekey)}`;
+    this.logHttp("[wechat cdn request] upload", {
+      url,
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      filePath,
+      rawSize: data.length,
+      encryptedSize,
+    });
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/octet-stream" },
       body: new Uint8Array(encrypted),
     });
+    const responseText = res.status === 200 ? "" : await res.text();
+    this.logHttp("[wechat cdn response] upload", {
+      url,
+      status: res.status,
+      ok: res.ok,
+      headers: {
+        "x-encrypted-param": res.headers.get("x-encrypted-param"),
+      },
+      body: responseText,
+    });
     if (res.status !== 200) {
-      throw new Error(`CDN upload failed: HTTP ${res.status} ${await res.text()}`);
+      throw new Error(`CDN upload failed: HTTP ${res.status} ${responseText}`);
     }
     const downloadParam = res.headers.get("x-encrypted-param");
     if (!downloadParam) {

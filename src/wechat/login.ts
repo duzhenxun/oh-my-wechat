@@ -15,7 +15,7 @@ import {
   ensureOmwHome,
   readJson,
   writeJson,
-} from "./paths.js";
+} from "./paths.ts";
 
 type QrPayload = {
   qrcode: string;

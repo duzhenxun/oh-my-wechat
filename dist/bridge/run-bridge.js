@@ -6,7 +6,7 @@ import { WechatWire } from "../wechat/wire.js";
 import { readLocalPackageInfo } from "../cli/version.js";
 import { CodexRuntimeAgent } from "./codex-runtime-agent.js";
 import { ClaudePrintAgent } from "./claude-print-agent.js";
-import { OpenCodeAgent } from "./opencode-agent.js";
+import { OpenCodeAcpAgent } from "./opencode-acp-agent.js";
 import { TerminalAgent } from "./terminal-agent.js";
 import { classifyAttachment, cleanTerminalText, humanStatus, minimizeAttachmentReply, parseAttachments, preview, promptForWechat, } from "./text.js";
 const POLL_RETRY_MIN = 1_000;
@@ -60,6 +60,7 @@ export function parseArgs(argv) {
     let mode = "codex";
     let command;
     let cwd = process.cwd();
+    let wechatHttpLog = false;
     const args = [];
     for (let i = 0; i < argv.length; i += 1) {
         const arg = argv[i];
@@ -92,6 +93,10 @@ export function parseArgs(argv) {
             i += 1;
             continue;
         }
+        if (arg === "--wechat-http-log") {
+            wechatHttpLog = true;
+            continue;
+        }
         if (arg) {
             args.push(arg);
         }
@@ -101,6 +106,7 @@ export function parseArgs(argv) {
         ...(command ? { command } : {}),
         cwd,
         args,
+        wechatHttpLog,
     };
 }
 function helpText() {
@@ -110,7 +116,8 @@ function helpText() {
         "/stop 中断   /new 新会话",
         "",
         "审批回复：",
-        "y / n   1 / 0   同意 / 拒绝",
+        "同意: y /  1 / 同意 ",
+        "拒绝: n / 0 / 拒绝",
     ].join("\n");
 }
 function bridgeOnlineText(mode, cwd, version) {
@@ -119,18 +126,13 @@ function bridgeOnlineText(mode, cwd, version) {
         "我是 oh-my-wechat，简称 omw，你的 AI 助手。",
         "我可以帮你处理这些事情：",
         "- 文件操作：读取、编辑、搜索文件",
-        "- 终端命令：执行 shell 命令、管理进程",
-        "- 网页浏览：访问网站、点击元素、填写表单",
-        "- 代码执行：运行 Python 脚本",
-        "- 任务管理：创建待办事项、设置定时任务",
         "- 技能调用：处理特定领域任务",
+        `- 帮助：/h`,
         "",
         "当前信息：",
         `- 版本：oh-my-wechat v${version}`,
-        `- Agent：${mode} agent`,
+        `- Agent：${mode}`,
         `- 目录：${cwd}`,
-        "",
-        helpText(),
         "",
         "直接发送普通消息，我就会开始处理。",
     ].join("\n");
@@ -255,13 +257,13 @@ export async function runBridge(options) {
     });
     try {
         await ensureLogin({ log });
-        const wire = new WechatWire(log, options.cwd);
+        const wire = new WechatWire(log, options.cwd, { httpLog: options.wechatHttpLog });
         const runtimeAgent = options.mode === "codex"
             ? new CodexRuntimeAgent(options)
             : options.mode === "claude"
                 ? new ClaudePrintAgent(options)
                 : options.mode === "opencode"
-                    ? new OpenCodeAgent(options)
+                    ? new OpenCodeAcpAgent(options)
                     : new TerminalAgent(options);
         agent = runtimeAgent;
         let lastRecipient;

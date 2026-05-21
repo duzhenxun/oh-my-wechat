@@ -1,4 +1,4 @@
-import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.js";
+import type { Agent, AgentEvent, AgentState, OmwMode } from "./types.ts";
 type OpenCodeAgentOptions = {
     mode: OmwMode;
     command?: string;
@@ -6,7 +6,6 @@ type OpenCodeAgentOptions = {
     args?: string[];
 };
 export declare class OpenCodeAgent implements Agent {
-    private readonly options;
     private sink;
     private server;
     private client;
@@ -19,6 +18,7 @@ export declare class OpenCodeAgent implements Agent {
     private partTextById;
     private finalText;
     private readonly stateValue;
+    private readonly options;
     constructor(options: OpenCodeAgentOptions);
     onEvent(sink: (event: AgentEvent) => void): void;
     start(): Promise<void>;

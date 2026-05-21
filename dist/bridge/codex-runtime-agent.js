@@ -12,7 +12,6 @@ const TOKEN_ENV = "OH_MY_WECHAT_CODEX_REMOTE_TOKEN";
 const DEBUG = process.env.OH_MY_WECHAT_CODEX_DEBUG === "1";
 const OMW_VERSION = readLocalPackageInfo().version;
 export class CodexRuntimeAgent {
-    options;
     sink = () => undefined;
     server = null;
     socket = null;
@@ -28,6 +27,7 @@ export class CodexRuntimeAgent {
     finalTextByTurn = new Map();
     pendingApproval = null;
     stateValue;
+    options;
     constructor(options) {
         this.options = options;
         this.stateValue = {

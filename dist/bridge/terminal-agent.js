@@ -2,11 +2,11 @@ import os from "node:os";
 import { spawn as spawnChild } from "node:child_process";
 import { cleanTerminalText, defaultCommand, interactiveShellCommand, now, preview, riskyShellCommand, splitCommand, } from "./text.js";
 export class TerminalAgent {
-    options;
     pty = null;
     child = null;
     sink = () => undefined;
     stateValue;
+    options;
     outputBuffer = "";
     flushTimer = null;
     pendingCommand = null;

@@ -126,7 +126,7 @@ function commandUsage(subcommand) {
                 "  omw opencode [--cwd <dir>] [--command <cmd>] [args...]",
                 "",
                 "Description:",
-                "  启动 OpenCode bridge，默认本地命令为 opencode。",
+                "  启动 OpenCode bridge（ACP 模式），默认本地命令为 opencode。",
                 "",
                 "Options:",
                 "  --cwd <dir>       指定工作目录，默认当前目录",

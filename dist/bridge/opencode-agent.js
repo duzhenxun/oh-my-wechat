@@ -3,7 +3,6 @@ import net from "node:net";
 import { cleanTerminalText, defaultCommand, now, preview, splitCommand } from "./text.js";
 const HOST = "127.0.0.1";
 export class OpenCodeAgent {
-    options;
     sink = () => undefined;
     server = null;
     client = null;
@@ -16,6 +15,7 @@ export class OpenCodeAgent {
     partTextById = new Map();
     finalText = "";
     stateValue;
+    options;
     constructor(options) {
         this.options = options;
         this.stateValue = {

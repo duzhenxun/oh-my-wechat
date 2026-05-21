@@ -2,7 +2,7 @@ import os from "node:os";
 import { spawn as spawnChild } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
-import type { Agent, AgentEvent, AgentState, ApprovalTicket, OmwMode } from "./types.js";
+import type { Agent, AgentEvent, AgentState, ApprovalTicket, OmwMode } from "./types.ts";
 import {
   cleanTerminalText,
   defaultCommand,
@@ -11,7 +11,7 @@ import {
   preview,
   riskyShellCommand,
   splitCommand,
-} from "./text.js";
+} from "./text.ts";
 
 type TerminalAgentOptions = {
   mode: OmwMode;
@@ -45,12 +45,14 @@ export class TerminalAgent implements Agent {
   private child: ChildProcessWithoutNullStreams | null = null;
   private sink: (event: AgentEvent) => void = () => undefined;
   private readonly stateValue: AgentState;
+  private readonly options: TerminalAgentOptions;
   private outputBuffer = "";
   private flushTimer: NodeJS.Timeout | null = null;
   private pendingCommand: string | null = null;
   private closing = false;
 
-  constructor(private readonly options: TerminalAgentOptions) {
+  constructor(options: TerminalAgentOptions) {
+    this.options = options;
     this.stateValue = {
       mode: options.mode,
       command: options.command || defaultCommand(options.mode),

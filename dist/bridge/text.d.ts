@@ -1,4 +1,4 @@
-import type { IncomingWechatAttachment } from "../wechat/wire.js";
+import type { IncomingWechatAttachment } from "../wechat/wire.ts";
 export declare function now(): string;
 export declare function cleanTerminalText(value: string): string;
 export declare function preview(value: string, limit?: number): string;

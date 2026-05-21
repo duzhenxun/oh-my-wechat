@@ -6,9 +6,9 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import net from "node:net";
 import WebSocket from "ws";
 
-import { readLocalPackageInfo } from "../cli/version.js";
-import type { Agent, AgentEvent, AgentState } from "./types.js";
-import { cleanTerminalText, defaultCommand, now, preview, splitCommand } from "./text.js";
+import { readLocalPackageInfo } from "../cli/version.ts";
+import type { Agent, AgentEvent, AgentState } from "./types.ts";
+import { cleanTerminalText, defaultCommand, now, preview, splitCommand } from "./text.ts";
 
 type CodexRemoteEndpoint = {
   command: string;
@@ -53,8 +53,10 @@ export class CodexRuntimeAgent implements Agent {
     ticket: AgentState["pendingApproval"];
   } | null = null;
   private readonly stateValue: AgentState;
+  private readonly options: CodexRuntimeOptions;
 
-  constructor(private readonly options: CodexRuntimeOptions) {
+  constructor(options: CodexRuntimeOptions) {
+    this.options = options;
     this.stateValue = {
       mode: "codex",
       command: options.command || defaultCommand("codex"),
